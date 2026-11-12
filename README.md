@@ -1,6 +1,8 @@
 # Pink — Assistente Pessoal Estilo Jarvis
 
-Uma assistente pessoal por voz inspirada no **Jarvis** do Homem de Ferro, feita com visual feminino personalizável, holograma animado e funcionamento tanto **offline (grátis)** quanto conectado à API do Claude.
+Uma assistente pessoal por voz inspirada no **Jarvis** do Homem de Ferro, feita com visual feminino personalizável, holograma animado e funcionamento tanto **direto no navegador (GitHub Pages)** quanto **local no computador com Python** (com suporte opcional à API do Claude).
+
+🌐 **Versão Web (GitHub Pages):** https://manumartinzz.github.io/PINK/
 
 ## O que ela faz
 

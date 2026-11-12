@@ -12,6 +12,7 @@ jobs:
         with:
           node-version: "20"
       - run: node tests/test_palmas.js
+      - run: node tests/test_local_brain.js
       - run: pip install -r requirements.txt
       - run: python -m compileall app.py pink
       - run: python -m unittest discover -s tests -v

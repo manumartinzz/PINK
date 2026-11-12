@@ -31,12 +31,13 @@
       <aside class="panel hud-left" aria-label="Painel de controle">
         <section class="hud-block">
           <h2>Seu computador</h2>
-          <div class="gauges-grid">
+          <div id="gaugesGrid" class="gauges-grid">
             <div class="gauge" data-key="cpu"><svg viewBox="0 0 100 100" aria-hidden="true"><circle class="trilho" cx="50" cy="50" r="42"/><circle class="valor" cx="50" cy="50" r="42"/></svg><b>0%</b><span>CPU</span></div>
             <div class="gauge" data-key="ram"><svg viewBox="0 0 100 100" aria-hidden="true"><circle class="trilho" cx="50" cy="50" r="42"/><circle class="valor" cx="50" cy="50" r="42"/></svg><b>0%</b><span>Memória</span></div>
             <div class="gauge" data-key="disco"><svg viewBox="0 0 100 100" aria-hidden="true"><circle class="trilho" cx="50" cy="50" r="42"/><circle class="valor" cx="50" cy="50" r="42"/></svg><b>0%</b><span>Disco</span></div>
             <div class="gauge" data-key="bateria" hidden><svg viewBox="0 0 100 100" aria-hidden="true"><circle class="trilho" cx="50" cy="50" r="42"/><circle class="valor" cx="50" cy="50" r="42"/></svg><b>0%</b><span>Bateria</span></div>
           </div>
+          <p id="pcHint" class="task-empty" hidden>Modo Web ativo. Para CPU, RAM e disco, rode <code>python app.py</code> no PC.</p>
         </section>
 
         <section class="hud-block timer-card">
@@ -182,6 +183,7 @@
 
   <script src="sfx.js"></script>
   <script src="palmas.js"></script>
+  <script src="local_brain.js"></script>
   <script src="app.js"></script>
 </body>
 </html>

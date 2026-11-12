@@ -21,6 +21,8 @@
     chips: $("chips"),
     orb: $("orb"),
     modoBadge: $("modoBadge"),
+    gaugesGrid: $("gaugesGrid"),
+    pcHint: $("pcHint"),
     // Timer
     timerDisplay: $("timerDisplay"),
     timerLabel: $("timerLabel"),
@@ -123,6 +125,7 @@
     microfoneLigado: false,
     ocupada: false,
     online: false,
+    hasServer: false,
   };
 
   const rotulos = {
@@ -557,14 +560,26 @@
   }
 
   async function carregarTarefas() {
+    if (!estado.hasServer && window.PinkLocalBrain) {
+      renderizarTarefas(window.PinkLocalBrain.defaultStore.list());
+      return;
+    }
     try {
       const r = await fetch("/api/tasks");
+      if (!r.ok) throw new Error("HTTP");
       const d = await r.json();
       renderizarTarefas(d.tasks || []);
-    } catch (_) {}
+    } catch (_) {
+      if (window.PinkLocalBrain) renderizarTarefas(window.PinkLocalBrain.defaultStore.list());
+    }
   }
 
   async function alternarTarefa(id) {
+    if (!estado.hasServer && window.PinkLocalBrain) {
+      renderizarTarefas(window.PinkLocalBrain.defaultStore.toggle(id));
+      if (window.PinkSFX) window.PinkSFX.click();
+      return;
+    }
     try {
       const r = await fetch(`/api/tasks/${id}`, { method: "PATCH" });
       const d = await r.json();
@@ -574,6 +589,10 @@
   }
 
   async function removerTarefa(id) {
+    if (!estado.hasServer && window.PinkLocalBrain) {
+      renderizarTarefas(window.PinkLocalBrain.defaultStore.removeById(id));
+      return;
+    }
     try {
       const r = await fetch(`/api/tasks/${id}`, { method: "DELETE" });
       const d = await r.json();
@@ -586,6 +605,12 @@
     const txt = el.inputTarefa.value.trim();
     if (!txt) return;
     el.inputTarefa.value = "";
+    if (!estado.hasServer && window.PinkLocalBrain) {
+      const res = window.PinkLocalBrain.defaultStore.add(txt);
+      renderizarTarefas(res.tasks || []);
+      if (window.PinkSFX) window.PinkSFX.click();
+      return;
+    }
     try {
       const r = await fetch("/api/tasks", {
         method: "POST",
@@ -599,6 +624,11 @@
   });
 
   el.btnLimparFeitas.addEventListener("click", async () => {
+    if (!estado.hasServer && window.PinkLocalBrain) {
+      window.PinkLocalBrain.defaultStore.clear(true);
+      renderizarTarefas(window.PinkLocalBrain.defaultStore.list());
+      return;
+    }
     try {
       const r = await fetch("/api/tasks?scope=done", { method: "DELETE" });
       const d = await r.json();
@@ -643,28 +673,36 @@
     definirFase("thinking");
     if (window.PinkSFX) window.PinkSFX.send();
 
+    const cfgAtual = {
+      assistantName: prefs.assistantName,
+      userName: prefs.userName,
+      personality: prefs.personality,
+      city: prefs.city,
+    };
+
     let dados;
-    try {
-      const r = await fetch("/api/chat", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          message: mensagem,
-          config: {
-            assistantName: prefs.assistantName,
-            userName: prefs.userName,
-            personality: prefs.personality,
-            city: prefs.city,
-          },
-        }),
-      });
-      dados = await r.json();
-    } catch (_) {
-      dados = {
-        text: `Não consegui falar com o servidor da ${prefs.assistantName}. Ele está rodando?`,
-        actions: [],
-        client_actions: [],
-      };
+    if (estado.hasServer) {
+      try {
+        const r = await fetch("/api/chat", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ message: mensagem, config: cfgAtual }),
+        });
+        if (!r.ok) throw new Error("HTTP");
+        dados = await r.json();
+      } catch (_) {
+        dados = window.PinkLocalBrain
+          ? window.PinkLocalBrain.responder(mensagem, cfgAtual)
+          : {
+              text: `Não consegui falar com o servidor da ${prefs.assistantName}. Ele está rodando?`,
+              actions: [],
+              client_actions: [],
+            };
+      }
+    } else if (window.PinkLocalBrain) {
+      dados = window.PinkLocalBrain.responder(mensagem, cfgAtual);
+    } else {
+      dados = { text: "Modo Web inicializando...", actions: [], client_actions: [] };
     }
 
     const clientActions = dados.client_actions || [];
@@ -729,7 +767,9 @@
   });
 
   el.limpar.addEventListener("click", async () => {
-    try { await fetch("/api/reset", { method: "POST" }); } catch (_) {}
+    if (estado.hasServer) {
+      try { await fetch("/api/reset", { method: "POST" }); } catch (_) {}
+    }
     el.log.textContent = "";
     el.legenda.textContent = "Conversa nova. Sobre o que vamos falar?";
     if (window.PinkSFX) window.PinkSFX.click();
@@ -870,23 +910,42 @@
 
   /* ---------- Painel do computador ---------- */
   const CIRC = 264; // 2 * pi * 42
+  function aplicarGauges(d) {
+    document.querySelectorAll(".gauge").forEach((g) => {
+      const v = d[g.dataset.key];
+      if (v === null || v === undefined) {
+        g.hidden = true;
+        return;
+      }
+      g.hidden = false;
+      g.querySelector("b").textContent = v + "%";
+      g.querySelector(".valor").style.strokeDashoffset = CIRC * (1 - v / 100);
+    });
+  }
+
   async function atualizarStatus() {
+    if (!estado.hasServer) return;
     try {
-      const d = await (await fetch("/api/status")).json();
-      document.querySelectorAll(".gauge").forEach((g) => {
-        const v = d[g.dataset.key];
-        if (v === null || v === undefined) {
-          g.hidden = true;
-          return;
-        }
-        g.hidden = false;
-        g.querySelector("b").textContent = v + "%";
-        g.querySelector(".valor").style.strokeDashoffset = CIRC * (1 - v / 100);
-      });
+      const r = await fetch("/api/status");
+      if (!r.ok) return;
+      aplicarGauges(await r.json());
     } catch (_) {}
   }
-  atualizarStatus();
-  setInterval(atualizarStatus, 3000);
+
+  async function atualizarBateriaWeb() {
+    aplicarGauges({ cpu: null, ram: null, disco: null, bateria: null });
+    if (el.pcHint) el.pcHint.hidden = false;
+    if (navigator.getBattery) {
+      try {
+        const bat = await navigator.getBattery();
+        const mostrar = () => aplicarGauges({
+          cpu: null, ram: null, disco: null, bateria: Math.round(bat.level * 100),
+        });
+        mostrar();
+        bat.addEventListener("levelchange", mostrar);
+      } catch (_) {}
+    }
+  }
 
   /* ---------- Orbe Holográfico ---------- */
   const ctx = el.orb.getContext("2d");
@@ -1075,22 +1134,41 @@
   /* ---------- Início ---------- */
   async function iniciar() {
     carregarPrefsLocal();
-    try {
-      const cfg = await (await fetch("/api/config")).json();
-      if (!localStorage.getItem("pink-prefs")) {
-        if (cfg.nome) prefs.userName = cfg.nome;
-        if (cfg.assistente) prefs.assistantName = cfg.assistente;
-        if (cfg.personalidade) prefs.personality = cfg.personalidade;
-        if (cfg.cidade) prefs.city = cfg.cidade;
-      }
-      estado.online = Boolean(cfg.online);
-    } catch (_) {}
+    const provavelEstatico =
+      window.location.hostname.endsWith(".github.io") ||
+      window.location.protocol === "file:";
+
+    if (!provavelEstatico) {
+      try {
+        const resp = await fetch("/api/config");
+        const ct = resp.headers.get("content-type") || "";
+        if (resp.ok && ct.includes("application/json")) {
+          const cfg = await resp.json();
+          estado.hasServer = true;
+          if (!localStorage.getItem("pink-prefs")) {
+            if (cfg.nome) prefs.userName = cfg.nome;
+            if (cfg.assistente) prefs.assistantName = cfg.assistente;
+            if (cfg.personalidade) prefs.personality = cfg.personalidade;
+            if (cfg.cidade) prefs.city = cfg.cidade;
+          }
+          estado.online = Boolean(cfg.online);
+        }
+      } catch (_) {}
+    }
 
     aplicarPreferencias();
     atualizarTimerUI();
     carregarTarefas();
 
-    el.modoBadge.textContent = estado.online ? "Claude online" : "Modo offline";
+    if (estado.hasServer) {
+      if (el.pcHint) el.pcHint.hidden = true;
+      atualizarStatus();
+      setInterval(atualizarStatus, 3000);
+      el.modoBadge.textContent = estado.online ? "Claude online" : "Modo offline";
+    } else {
+      atualizarBateriaWeb();
+      el.modoBadge.textContent = "Modo Web";
+    }
 
     const oi = prefs.userName
       ? `Oi, ${prefs.userName}! Eu sou a ${prefs.assistantName}.`
