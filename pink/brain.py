@@ -7,7 +7,6 @@ import random
 import re
 import unicodedata
 from typing import Any
-from urllib.parse import quote_plus
 
 from . import skills
 
@@ -16,10 +15,13 @@ MAX_VOLTAS_FERRAMENTAS = 5
 
 PERSONALIDADES = {
     "carinhosa": {
-        "titulo": "Doce & Amigável",
-        "instrucao": "Seja acolhedora, gentil, positiva e encorajadora como uma melhor amiga inteligente.",
-        "saudacao": "Que bom falar com você!",
-        "prefixo_ok": "Com carinho: ",
+        "titulo": "Melhor Amiga",
+        "instrucao": (
+            "Fale como uma melhor amiga inteligente, acolhedora, próxima e espontânea — "
+            "com tom natural e caloroso, sem parecer robô ou assistente formal."
+        ),
+        "saudacao": "Que bom falar com você! Tô aqui pra tudo que precisar.",
+        "prefixo_ok": "Prontinho, amiga: ",
     },
     "jarvis": {
         "titulo": "Jarvis Elegante",
@@ -88,12 +90,14 @@ def _prompt_sistema(cfg: dict[str, str]) -> str:
         f"{quem}"
         f"A cidade padrão configurada é {cfg['city']}. "
         "Responda sempre em português do Brasil. Suas respostas serão LIDAS EM VOZ ALTA: "
-        "use frases curtas e naturais, sem markdown, sem listas com asteriscos, sem emojis e sem símbolos. "
-        "Quando pedirem previsão do tempo, lembretes, timer de estudos, cálculos, abrir sites/apps, "
-        "hora, status do computador, piadas, curiosidades ou trocar nome/tema/personalidade, "
-        "use as ferramentas disponíveis em vez de apenas explicar. "
+        "use frases curtas, fluidas e naturais como uma conversa entre amigas, sem markdown, "
+        "sem listas com asteriscos, sem emojis e sem símbolos. "
+        "Quando pedirem pesquisas, perguntas gerais da web, previsão do tempo, lembretes, "
+        "timer de estudos, cálculos, abrir sites/apps, hora, status do computador, piadas, "
+        "curiosidades ou trocar nome/tema/personalidade, use as ferramentas disponíveis "
+        "(incluindo research_web e fetch_webpage) em vez de apenas explicar. "
         "Depois de usar uma ferramenta, confirme em uma frase natural. "
-        "Se não souber algo, diga com sinceridade."
+        "Se não souber algo, pesquise na web ou diga com sinceridade."
     )
 
 
@@ -306,20 +310,19 @@ class Brain:
                 "client_actions": [],
             }
 
-        # 9) Pesquisar na web
+        # 9) Pesquisar na web (consulta real + links)
         m_busca = re.match(
-            r"^(?:pesquis[ae]r?|busc[ae]r?|procur[ae]r?)\s+(?:por\s+|no google\s+)?(.+)",
+            r"^(?:pesquis[ae]r?|busc[ae]r?|procur[ae]r?|descubr[ae]|investig[ae]r?)\s+(?:por\s+|sobre\s+|no google\s+)?(.+)",
             t_orig,
             re.I,
         )
         if m_busca:
-            consulta = m_busca.group(1).strip()
-            msg = skills.search_web(consulta)
-            url = "https://www.google.com/search?q=" + quote_plus(consulta)
+            consulta = m_busca.group(1).strip().rstrip("?!.")
+            texto_web, c_acoes = skills.research_web(consulta)
             return {
-                "text": msg,
-                "actions": [msg],
-                "client_actions": [{"type": "open_url", "url": url, "label": f"Ver busca: {consulta}"}],
+                "text": texto_web,
+                "actions": [f"Pesquisa web: {consulta}"],
+                "client_actions": c_acoes,
             }
 
         # 10) Abrir site ou aplicativo
@@ -340,11 +343,26 @@ class Brain:
         if resp_chat is not None:
             return {"text": resp_chat, "actions": [], "client_actions": []}
 
+        # 12) Perguntas abertas e assuntos gerais -> pesquisa automática na web
+        m_pergunta = re.match(
+            r"^(?:quem\s+(?:foi|e|é|sao|são)|o\s+que\s+(?:e|é|sao|são|significa)|"
+            r"(?:me\s+)?(?:fala|conte|explica|diz)\s+(?:sobre|o\s+que\s+e|quem\s+foi)?)\s+(.+)",
+            t_orig,
+            re.I,
+        )
+        termo = (m_pergunta.group(1) if m_pergunta else t_orig).strip().rstrip("?!.")
+        if len(termo) >= 3:
+            texto_web, c_acoes = skills.research_web(termo)
+            return {
+                "text": texto_web,
+                "actions": [f"Pesquisa web: {termo}"],
+                "client_actions": c_acoes,
+            }
+
         return {
             "text": (
-                f"Ainda não sei responder isso livremente sem uma chave da API no arquivo .env{chamado}, "
-                "mas já posso ver a hora, previsão do tempo, seus lembretes, iniciar um timer de estudos, "
-                "fazer contas, contar curiosidades ou abrir sites. Quer tentar um desses?"
+                f"Pode falar mais um pouquinho{chamado}? Posso pesquisar qualquer assunto na web, "
+                "ver o tempo, abrir sites, anotar lembretes ou iniciar um timer de estudos."
             ),
             "actions": [],
             "client_actions": [],
@@ -380,6 +398,7 @@ class Brain:
             }
 
         temas = [
+            (r"rosa\s*futuro|futurist|hologram", "rosa-futuro", "Rosa Futuro HUD"),
             (r"rose\s*gold|dourad|cobre", "rose-gold", "Rose Gold"),
             (r"lilas|roxo|lavanda|galax", "lilas-galaxy", "Lilás Galáxia"),
             (r"cereja|cyber|escuro|noturno|dark", "cereja-cyber", "Cereja Cyber"),

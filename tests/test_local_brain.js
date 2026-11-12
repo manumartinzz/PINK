@@ -36,4 +36,15 @@ const rOi = responder("Oi", { assistantName: "Aurora", userName: "Manu" }, store
 assert.ok(rOi.text.includes("Aurora"));
 assert.ok(rOi.text.includes("Manu"));
 
+const rPesq = responder("Pesquisa sobre buracos negros", {}, store);
+assert.strictEqual(rPesq.client_actions[0].type, "web_research");
+assert.strictEqual(rPesq.client_actions[0].query, "buracos negros");
+
+const rPerg = responder("Quem foi Ada Lovelace?", {}, store);
+assert.strictEqual(rPerg.client_actions[0].type, "web_research");
+assert.strictEqual(rPerg.client_actions[0].query, "Ada Lovelace");
+
+const rTema = responder("Ativa o tema futurista", {}, store);
+assert.strictEqual(rTema.client_actions[0].value, "rosa-futuro");
+
 console.log("local_brain: todos os testes passaram");

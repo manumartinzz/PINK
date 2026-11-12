@@ -101,11 +101,17 @@ if __name__ == "__main__":
         action="store_true",
         default=os.getenv("PINK_NO_BROWSER", "").strip().lower() in ("1", "true", "yes"),
     )
+    parser.add_argument(
+        "--autopalmas",
+        action="store_true",
+        default=os.getenv("PINK_AUTOPALMAS", "").strip().lower() in ("1", "true", "yes"),
+    )
     args = parser.parse_args()
 
     url = f"http://{args.host}:{args.port}"
     print(f"\n  Pink no ar em {url}")
     print("  Use o Chrome ou o Edge para ter reconhecimento de voz.\n")
     if not args.no_browser and args.host in ("127.0.0.1", "localhost"):
-        threading.Timer(1.0, lambda: webbrowser.open(f"http://127.0.0.1:{args.port}")).start()
+        destino = f"http://127.0.0.1:{args.port}/" + ("?autopalmas=1" if args.autopalmas else "")
+        threading.Timer(1.0, lambda: webbrowser.open(destino)).start()
     app.run(host=args.host, port=args.port, debug=False)

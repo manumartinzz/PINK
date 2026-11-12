@@ -1,4 +1,4 @@
-/* Pink — interface, voz, holograma e poderes estilo Jarvis */
+/* Pink — interface futurista, voz de amiga, pesquisa web, palmas e holograma 3D */
 (() => {
   "use strict";
 
@@ -50,14 +50,44 @@
     personalityGrid: $("personalityGrid"),
     themeGrid: $("themeGrid"),
     orbGrid: $("orbGrid"),
+    voicePresetGrid: $("voicePresetGrid"),
+    clapSensGrid: $("clapSensGrid"),
   };
 
   const TEMAS_ORB = {
+    "rosa-futuro": {
+      glow: "rgba(255,46,147,.34)",
+      ring1: "rgba(125,211,252,.65)",
+      ring2: "rgba(255,46,147,.85)",
+      ring3: "rgba(255,142,208,.48)",
+      waveFill: "rgba(255,46,147,.24)",
+      waveStroke: "rgba(255,121,198,.95)",
+      core1: "#fff6fb",
+      core2: "#ff66b8",
+      core3: "#c90064",
+      shadow: "rgba(255,46,147,.88)",
+      particle: "rgba(125,211,252,.94)",
+      gyro: "rgba(125,211,252,.42)",
+    },
+    "cereja-cyber": {
+      glow: "rgba(255,46,147,.34)",
+      ring1: "rgba(125,211,252,.65)",
+      ring2: "rgba(255,46,147,.85)",
+      ring3: "rgba(255,142,208,.48)",
+      waveFill: "rgba(255,46,147,.24)",
+      waveStroke: "rgba(255,121,198,.95)",
+      core1: "#fff6fb",
+      core2: "#ff66b8",
+      core3: "#c90064",
+      shadow: "rgba(255,46,147,.88)",
+      particle: "rgba(125,211,252,.94)",
+      gyro: "rgba(125,211,252,.42)",
+    },
     "rosa-neon": {
       glow: "rgba(255,111,180,.30)",
       ring1: "rgba(196,18,107,.55)",
-      ring2: "rgba(255,61,154,.65)",
-      ring3: "rgba(74,8,48,.32)",
+      ring2: "rgba(255,61,154,.68)",
+      ring3: "rgba(74,8,48,.34)",
       waveFill: "rgba(255,61,154,.22)",
       waveStroke: "rgba(255,61,154,.85)",
       core1: "#fff7fb",
@@ -65,6 +95,7 @@
       core3: "#e0136f",
       shadow: "rgba(255,61,154,.72)",
       particle: "rgba(255,255,255,.9)",
+      gyro: "rgba(196,18,107,.35)",
     },
     "rose-gold": {
       glow: "rgba(223,142,130,.32)",
@@ -78,33 +109,28 @@
       core3: "#b85460",
       shadow: "rgba(199,98,108,.68)",
       particle: "rgba(255,244,238,.92)",
+      gyro: "rgba(142,53,64,.35)",
     },
     "lilas-galaxy": {
-      glow: "rgba(178,110,255,.32)",
-      ring1: "rgba(107,33,168,.55)",
-      ring2: "rgba(147,51,234,.65)",
-      ring3: "rgba(59,17,104,.34)",
-      waveFill: "rgba(147,51,234,.20)",
-      waveStroke: "rgba(147,51,234,.85)",
+      glow: "rgba(168,85,247,.34)",
+      ring1: "rgba(103,232,249,.62)",
+      ring2: "rgba(168,85,247,.84)",
+      ring3: "rgba(233,213,255,.46)",
+      waveFill: "rgba(168,85,247,.24)",
+      waveStroke: "rgba(216,180,254,.92)",
       core1: "#fcf8ff",
-      core2: "#d8b4fe",
+      core2: "#c084fc",
       core3: "#7e22ce",
-      shadow: "rgba(147,51,234,.72)",
-      particle: "rgba(243,232,255,.95)",
+      shadow: "rgba(168,85,247,.86)",
+      particle: "rgba(103,232,249,.95)",
+      gyro: "rgba(103,232,249,.42)",
     },
-    "cereja-cyber": {
-      glow: "rgba(255,46,147,.36)",
-      ring1: "rgba(255,133,200,.65)",
-      ring2: "rgba(255,46,147,.82)",
-      ring3: "rgba(166,227,255,.45)",
-      waveFill: "rgba(255,46,147,.26)",
-      waveStroke: "rgba(255,121,198,.95)",
-      core1: "#fff5fb",
-      core2: "#ff66b8",
-      core3: "#b8005c",
-      shadow: "rgba(255,46,147,.88)",
-      particle: "rgba(166,227,255,.92)",
-    },
+  };
+
+  const VOICE_PRESETS = {
+    amiga: { pitch: 1.02, rate: 1.03 },
+    suave: { pitch: 0.98, rate: 0.96 },
+    animada: { pitch: 1.07, rate: 1.08 },
   };
 
   const prefs = {
@@ -112,9 +138,11 @@
     userName: "",
     city: "Curitiba",
     personality: "carinhosa",
-    theme: "rosa-neon",
-    orbStyle: "estelar",
+    theme: "rosa-futuro",
+    orbStyle: "cristal",
+    voicePreset: "amiga",
     voiceName: "",
+    clapSens: "normal",
     vozLigada: true,
     sonsLigados: true,
   };
@@ -151,7 +179,7 @@
   }
 
   function aplicarPreferencias() {
-    const tema = TEMAS_ORB[prefs.theme] ? prefs.theme : "rosa-neon";
+    const tema = TEMAS_ORB[prefs.theme] ? prefs.theme : "rosa-futuro";
     prefs.theme = tema;
     document.documentElement.setAttribute("data-theme", tema);
     const nome = (prefs.assistantName || "Pink").trim() || "Pink";
@@ -159,10 +187,13 @@
 
     el.brand.textContent = nome;
     document.title = nome;
-    el.texto.placeholder = `Escreva para a ${nome}`;
+    el.texto.placeholder = `Converse ou pesquise qualquer assunto com a ${nome}…`;
     el.voz.setAttribute("aria-pressed", String(prefs.vozLigada));
     el.sons.setAttribute("aria-pressed", String(prefs.sonsLigados));
     if (window.PinkSFX) window.PinkSFX.setEnabled(prefs.sonsLigados);
+    if (window.PinkPalmas && window.PinkPalmas.setSensibilidade) {
+      window.PinkPalmas.setSensibilidade(prefs.clapSens);
+    }
 
     // Sincroniza campos do modal
     el.prefAssistente.value = prefs.assistantName;
@@ -178,6 +209,16 @@
     el.orbGrid.querySelectorAll("[data-orb]").forEach((btn) => {
       btn.classList.toggle("active", btn.dataset.orb === prefs.orbStyle);
     });
+    if (el.voicePresetGrid) {
+      el.voicePresetGrid.querySelectorAll("[data-vpreset]").forEach((btn) => {
+        btn.classList.toggle("active", btn.dataset.vpreset === prefs.voicePreset);
+      });
+    }
+    if (el.clapSensGrid) {
+      el.clapSensGrid.querySelectorAll("[data-sens]").forEach((btn) => {
+        btn.classList.toggle("active", btn.dataset.sens === prefs.clapSens);
+      });
+    }
     if (el.prefVoz && prefs.voiceName) {
       el.prefVoz.value = prefs.voiceName;
     }
@@ -213,6 +254,9 @@
   function renderizarLinks(container, clientActions) {
     (clientActions || []).forEach((acao) => {
       if (acao && acao.type === "open_url" && acao.url) {
+        const existe = Array.from(container.querySelectorAll(".acao-link"))
+          .some((a) => a.href === acao.url);
+        if (existe) return;
         const link = document.createElement("a");
         link.className = "acao-link";
         link.href = acao.url;
@@ -224,20 +268,31 @@
     });
   }
 
-  /* ---------- Voz: falar ---------- */
+  /* ---------- Voz de Amiga: seleção natural & fala ---------- */
   let vozPt = null;
+  function pontuarVoz(v) {
+    let pts = 0;
+    if (/pt[-_]BR/i.test(v.lang)) pts += 100;
+    else if (/^pt/i.test(v.lang)) pts += 40;
+    if (/natural|online|neural|google/i.test(v.name)) pts += 60;
+    if (/francisca|thalita|giovanna|leila|brenda|manuela|raquel|luciana|camila|vitoria/i.test(v.name)) pts += 50;
+    if (/female|feminin|maria|joana/i.test(v.name)) pts += 25;
+    if (/male|daniel|antonio|fabio|humberto|valerio|julio/i.test(v.name)) pts -= 80;
+    return pts;
+  }
+
   function listarVozes() {
     if (!window.speechSynthesis) return;
     const vozes = speechSynthesis.getVoices();
     const pts = vozes.filter((v) => /^pt/i.test(v.lang));
-    const candidatas = pts.length ? pts : vozes;
+    const candidatas = (pts.length ? pts : vozes).slice().sort((a, b) => pontuarVoz(b) - pontuarVoz(a));
 
     if (el.prefVoz) {
       const atual = prefs.voiceName || el.prefVoz.value;
       el.prefVoz.innerHTML = "";
       const optAuto = document.createElement("option");
       optAuto.value = "";
-      optAuto.textContent = "Automática (feminina PT-BR)";
+      optAuto.textContent = "Automática (Voz de Amiga PT-BR)";
       el.prefVoz.appendChild(optAuto);
 
       candidatas.forEach((v) => {
@@ -251,9 +306,7 @@
 
     vozPt =
       (prefs.voiceName && vozes.find((v) => v.name === prefs.voiceName)) ||
-      vozes.find((v) => /pt[-_]BR/i.test(v.lang) && /female|feminin|maria|francisca|thalita|luciana|raquel|google/i.test(v.name)) ||
-      vozes.find((v) => /pt[-_]BR/i.test(v.lang)) ||
-      vozes.find((v) => /^pt/i.test(v.lang)) ||
+      candidatas[0] ||
       null;
   }
   if (window.speechSynthesis) {
@@ -261,15 +314,25 @@
     speechSynthesis.addEventListener("voiceschanged", listarVozes);
   }
 
+  function prepararTextoFala(texto) {
+    return String(texto || "")
+      .replace(/https?:\/\/\S+/g, "")
+      .replace(/[*_`#]/g, "")
+      .replace(/\s+/g, " ")
+      .trim();
+  }
+
   function falar(texto) {
     return new Promise((resolve) => {
-      if (!prefs.vozLigada || !window.speechSynthesis) return resolve();
+      const limpo = prepararTextoFala(texto);
+      if (!prefs.vozLigada || !window.speechSynthesis || !limpo) return resolve();
       speechSynthesis.cancel();
-      const u = new SpeechSynthesisUtterance(texto);
+      const u = new SpeechSynthesisUtterance(limpo);
       u.lang = "pt-BR";
       if (vozPt) u.voice = vozPt;
-      u.rate = 1.04;
-      u.pitch = 1.12;
+      const preset = VOICE_PRESETS[prefs.voicePreset] || VOICE_PRESETS.amiga;
+      u.rate = preset.rate;
+      u.pitch = preset.pitch;
       u.onend = u.onerror = () => resolve();
       speechSynthesis.speak(u);
     });
@@ -348,7 +411,7 @@
       const pedido = (m[1] || "").trim();
       if (!pedido) {
         if (window.PinkSFX) window.PinkSFX.wake();
-        responderLocal(prefs.userName ? `Pois não, ${prefs.userName}?` : "Pois não?");
+        responderLocal(prefs.userName ? `Oii, ${prefs.userName}! Tô aqui, pode falar.` : "Oii! Tô aqui, pode falar.");
         return;
       }
       enviar(pedido);
@@ -366,6 +429,57 @@
     definirFase("speaking");
     await falar(texto);
     terminarTurno();
+  }
+
+  /* ---------- Pesquisa Web Ao Vivo no Navegador ---------- */
+  function limparResumoWeb(texto, maxFrases = 3) {
+    const limpo = String(texto || "").replace(/\[\d+\]/g, "").replace(/\s+/g, " ").trim();
+    const frases = limpo.split(/(?<=[.!?])\s+/);
+    let out = frases.slice(0, maxFrases).join(" ").trim();
+    if (out.length > 420) out = out.slice(0, 417).replace(/\s+\S*$/, "") + "...";
+    return out;
+  }
+
+  async function pesquisarNaWebNavegador(consulta) {
+    const links = [];
+    const googleUrl = "https://www.google.com/search?q=" + encodeURIComponent(consulta);
+
+    // 1) Wikipédia em Português (CORS nativo com origin=*)
+    try {
+      const buscaUrl = `https://pt.wikipedia.org/w/api.php?action=query&list=search&srsearch=${encodeURIComponent(consulta)}&srlimit=1&utf8=1&format=json&origin=*`;
+      const busca = await (await fetch(buscaUrl)).json();
+      const item = busca && busca.query && busca.query.search && busca.query.search[0];
+      if (item && item.title) {
+        const resumoUrl = `https://pt.wikipedia.org/api/rest_v1/page/summary/${encodeURIComponent(item.title.replace(/ /g, "_"))}`;
+        const pag = await (await fetch(resumoUrl)).json();
+        const extrato = (pag && pag.extract || "").trim();
+        const wikiUrl = (pag && pag.content_urls && pag.content_urls.desktop && pag.content_urls.desktop.page) ||
+          `https://pt.wikipedia.org/wiki/${encodeURIComponent(item.title.replace(/ /g, "_"))}`;
+        links.push({ type: "open_url", url: wikiUrl, label: `Wikipédia: ${item.title}` });
+        if (extrato) {
+          links.push({ type: "open_url", url: googleUrl, label: "Ver no Google" });
+          return { text: limparResumoWeb(extrato), links };
+        }
+      }
+    } catch (_) {}
+
+    // 2) DuckDuckGo Instant Answer
+    try {
+      const ddgUrl = `https://api.duckduckgo.com/?q=${encodeURIComponent(consulta)}&format=json&no_html=1&skip_disambig=1&kl=br-pt`;
+      const ddg = await (await fetch(ddgUrl)).json();
+      const resumo = (ddg && (ddg.AbstractText || ddg.Answer) || "").trim();
+      if (resumo) {
+        if (ddg.AbstractURL) links.push({ type: "open_url", url: ddg.AbstractURL, label: "Fonte" });
+        links.push({ type: "open_url", url: googleUrl, label: "Ver no Google" });
+        return { text: limparResumoWeb(resumo), links };
+      }
+    } catch (_) {}
+
+    links.push({ type: "open_url", url: googleUrl, label: `Pesquisar “${consulta}” no Google` });
+    return {
+      text: `Pesquisei sobre “${consulta}” na web e deixei o link com todos os resultados aqui embaixo pra você!`,
+      links,
+    };
   }
 
   /* ---------- Previsão do tempo via navegador (fallback Open-Meteo) ---------- */
@@ -636,7 +750,7 @@
     } catch (_) {}
   });
 
-  /* ---------- Falar com o servidor ---------- */
+  /* ---------- Falar com o servidor / Modo Web ---------- */
   async function executarAcoesCliente(clientActions, msgEl) {
     let textoSubstituido = null;
     for (const acao of clientActions || []) {
@@ -658,6 +772,14 @@
         if (msgEl) {
           const body = msgEl.querySelector(".msg-body");
           if (body) body.textContent = climaTexto;
+        }
+      } else if (acao.type === "web_research" && acao.query) {
+        const res = await pesquisarNaWebNavegador(acao.query);
+        textoSubstituido = res.text;
+        if (msgEl) {
+          const body = msgEl.querySelector(".msg-body");
+          if (body) body.textContent = res.text;
+          renderizarLinks(msgEl, res.links);
         }
       }
     }
@@ -709,8 +831,8 @@
     const msgEl = adicionar("pink", dados.text, dados.actions || [], clientActions);
     let textoFinal = dados.text;
 
-    const climaAtualizado = await executarAcoesCliente(clientActions, msgEl);
-    if (climaAtualizado) textoFinal = climaAtualizado;
+    const atualizado = await executarAcoesCliente(clientActions, msgEl);
+    if (atualizado) textoFinal = atualizado;
 
     if (window.PinkSFX) window.PinkSFX.receive();
     el.legenda.textContent = textoFinal;
@@ -771,7 +893,7 @@
       try { await fetch("/api/reset", { method: "POST" }); } catch (_) {}
     }
     el.log.textContent = "";
-    el.legenda.textContent = "Conversa nova. Sobre o que vamos falar?";
+    el.legenda.textContent = "Conversa nova! Sobre o que vamos falar agora?";
     if (window.PinkSFX) window.PinkSFX.click();
   });
 
@@ -848,6 +970,28 @@
     if (window.PinkSFX) window.PinkSFX.click();
   });
 
+  if (el.voicePresetGrid) {
+    el.voicePresetGrid.addEventListener("click", (e) => {
+      const b = e.target.closest("[data-vpreset]");
+      if (!b) return;
+      prefs.voicePreset = b.dataset.vpreset;
+      salvarPrefsLocal();
+      aplicarPreferencias();
+      if (window.PinkSFX) window.PinkSFX.click();
+    });
+  }
+
+  if (el.clapSensGrid) {
+    el.clapSensGrid.addEventListener("click", (e) => {
+      const b = e.target.closest("[data-sens]");
+      if (!b) return;
+      prefs.clapSens = b.dataset.sens;
+      salvarPrefsLocal();
+      aplicarPreferencias();
+      if (window.PinkSFX) window.PinkSFX.click();
+    });
+  }
+
   el.prefVoz.addEventListener("change", () => {
     prefs.voiceName = el.prefVoz.value;
     salvarPrefsLocal();
@@ -859,53 +1003,80 @@
     prefs.userName = el.prefUsuario.value.trim();
     listarVozes();
     const saud = prefs.userName
-      ? `Olá ${prefs.userName}! Eu sou a ${prefs.assistantName}, sua assistente pessoal.`
-      : `Olá! Eu sou a ${prefs.assistantName}, pronta para ajudar você.`;
+      ? `Oii ${prefs.userName}! Eu sou a ${prefs.assistantName}, sua amiga e assistente. E aí, o que vamos fazer hoje?`
+      : `Oii! Eu sou a ${prefs.assistantName}, sua amiga e assistente. Tô pronta pra tudo!`;
     falar(saud);
   });
 
   /* ---------- Duas palmas ---------- */
   let nivelUi = 0;
+  let timerPrimeira = null;
+
   function mostrarNivel(pico) {
-    nivelUi = Math.max(pico, nivelUi * 0.92);
-    el.medidor.style.width = Math.min(100, nivelUi * 150) + "%";
+    nivelUi = Math.max(pico, nivelUi * 0.88);
+    el.medidor.style.width = Math.min(100, Math.sqrt(nivelUi) * 145) + "%";
+  }
+
+  function sinalizarPrimeiraPalma() {
+    flash = Math.max(flash, 0.45);
+    el.palmas.classList.add("clap-prime");
+    clearTimeout(timerPrimeira);
+    timerPrimeira = setTimeout(() => el.palmas.classList.remove("clap-prime"), 1100);
+    if (!estado.ocupada && estado.fase === "idle") {
+      el.legenda.textContent = "1ª palma ouvida… bata a 2ª palma!";
+    }
   }
 
   function acordarPorPalmas() {
     if (estado.ocupada) return;
+    clearTimeout(timerPrimeira);
+    el.palmas.classList.remove("clap-prime");
     flash = 1;
     if (window.PinkSFX) window.PinkSFX.wake();
     if (SR) {
       estado.microfoneLigado = true;
       el.mic.setAttribute("aria-pressed", "true");
     }
-    responderLocal(prefs.userName ? `Pois não, ${prefs.userName}?` : "Pois não?");
+    const saud = prefs.userName
+      ? `Oii, ${prefs.userName}! Tô aqui, pode falar.`
+      : "Oii! Tô aqui, pode falar.";
+    responderLocal(saud);
   }
 
-  async function ligarPalmas() {
+  async function ligarPalmas(silencioso = false) {
     try {
       await PinkPalmas.iniciar({
+        sensibilidade: prefs.clapSens,
         aoDetectar: acordarPorPalmas,
+        aoPrimeira: sinalizarPrimeiraPalma,
         ocupado: () => estado.ocupada,
         aoNivel: mostrarNivel,
+        aoSuspender: (suspenso) => {
+          if (suspenso) {
+            el.legenda.textContent = "2 Palmas ativas — clique uma vez na tela para o navegador liberar o áudio automático.";
+          }
+        },
       });
       el.palmas.setAttribute("aria-pressed", "true");
       try { localStorage.setItem("pink-palmas", "on"); } catch (_) {}
     } catch (_) {
       el.palmas.setAttribute("aria-pressed", "false");
-      el.legenda.textContent = "Não consegui usar o microfone para ouvir as palmas. Libere o acesso nas permissões do navegador.";
+      if (!silencioso) {
+        el.legenda.textContent = "Não consegui usar o microfone para ouvir as palmas. Libere o acesso nas permissões do navegador.";
+      }
     }
   }
 
   async function desligarPalmas() {
     await PinkPalmas.parar();
     el.medidor.style.width = "0";
+    el.palmas.classList.remove("clap-prime");
     el.palmas.setAttribute("aria-pressed", "false");
     try { localStorage.setItem("pink-palmas", "off"); } catch (_) {}
   }
 
   el.palmas.addEventListener("click", () => {
-    el.palmas.getAttribute("aria-pressed") === "true" ? desligarPalmas() : ligarPalmas();
+    el.palmas.getAttribute("aria-pressed") === "true" ? desligarPalmas() : ligarPalmas(false);
   });
 
   /* ---------- Painel do computador ---------- */
@@ -947,13 +1118,13 @@
     }
   }
 
-  /* ---------- Orbe Holográfico ---------- */
+  /* ---------- Orbe Holográfico 3D ---------- */
   const ctx = el.orb.getContext("2d");
   const calmo = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
   let tamanho = 380, t = 0, nivel = 0.15, flash = 0;
 
-  const estrelas = Array.from({ length: 28 }, (_, i) => ({
-    ang: (i / 28) * Math.PI * 2,
+  const estrelas = Array.from({ length: 30 }, (_, i) => ({
+    ang: (i / 30) * Math.PI * 2,
     dist: 1.32 + (i % 5) * 0.16,
     vel: (i % 2 === 0 ? 1 : -1) * (0.25 + (i % 4) * 0.12),
     raio: 1.4 + (i % 3) * 0.9,
@@ -981,25 +1152,38 @@
     ctx.closePath();
   }
 
+  function desenharGiro3D(cx, cy, rx, ry, rot, cor) {
+    ctx.save();
+    ctx.translate(cx, cy);
+    ctx.rotate(rot);
+    ctx.beginPath();
+    ctx.ellipse(0, 0, rx, ry, 0, 0, Math.PI * 2);
+    ctx.strokeStyle = cor;
+    ctx.lineWidth = 1.4;
+    ctx.stroke();
+    ctx.restore();
+  }
+
   function desenhar() {
-    const s = tamanho, c = s / 2, R = s * 0.24;
+    const s = tamanho, c = s / 2, R = s * 0.23;
     const vel = calmo ? 0.15 : 1;
     t += 0.016 * vel;
 
-    const pal = TEMAS_ORB[prefs.theme] || TEMAS_ORB["rosa-neon"];
-    const alvo = {
+    const pal = TEMAS_ORB[prefs.theme] || TEMAS_ORB["rosa-futuro"];
+    const alvoBase = {
       idle: 0.12 + 0.04 * Math.sin(t * 1.6),
       listening: 0.45 + 0.18 * Math.sin(t * 5),
-      thinking: 0.34,
-      speaking: 0.52 + 0.3 * Math.abs(Math.sin(t * 7) * Math.cos(t * 3.1)),
+      thinking: 0.36,
+      speaking: 0.54 + 0.3 * Math.abs(Math.sin(t * 7) * Math.cos(t * 3.1)),
     }[estado.fase];
-    nivel += (alvo - nivel) * 0.08;
+    const alvo = Math.min(1, alvoBase + Math.min(0.35, nivelUi * 0.9));
+    nivel += (alvo - nivel) * 0.09;
 
     ctx.clearRect(0, 0, s, s);
 
     // brilho de fundo
-    const brilho = ctx.createRadialGradient(c, c, R * 0.5, c, c, s * 0.5);
-    brilho.addColorStop(0, "rgba(255,255,255,.65)");
+    const brilho = ctx.createRadialGradient(c, c, R * 0.45, c, c, s * 0.5);
+    brilho.addColorStop(0, "rgba(255,255,255,.55)");
     brilho.addColorStop(0.5, pal.glow);
     brilho.addColorStop(1, "rgba(255,111,180,0)");
     ctx.fillStyle = brilho;
@@ -1026,8 +1210,10 @@
     });
     ctx.setLineDash([]);
 
-    // Efeito extra conforme estilo selecionado
+    // Efeito conforme estilo do holograma
     if (prefs.orbStyle === "estelar") {
+      desenharGiro3D(c, c, R * 1.65, R * 0.52, t * 0.45, pal.gyro);
+      desenharGiro3D(c, c, R * 1.65, R * 0.52, -t * 0.35 + 1.05, pal.gyro);
       estrelas.forEach((st) => {
         const ang = st.ang + t * st.vel * (estado.fase === "thinking" ? 2.5 : 1);
         const dist = R * (st.dist + 0.05 * Math.sin(t * 2 + st.fase));
@@ -1043,24 +1229,31 @@
         ctx.restore();
       });
     } else if (prefs.orbStyle === "cristal") {
+      // Anéis 3D inclinados estilo Jarvis
+      desenharGiro3D(c, c, R * 1.72, R * 0.56, 0.55 + Math.sin(t * 0.5) * 0.25, pal.gyro);
+      desenharGiro3D(c, c, R * 1.72, R * 0.56, -0.55 - Math.cos(t * 0.4) * 0.25, pal.ring1);
+
       ctx.save();
       ctx.strokeStyle = pal.ring2;
-      ctx.lineWidth = 1.6;
-      desenharPoligono(c, c, R * (1.36 + nivel * 0.12), 6, t * 0.4 * mult);
+      ctx.lineWidth = 1.8;
+      desenharPoligono(c, c, R * (1.34 + nivel * 0.12), 6, t * 0.42 * mult);
       ctx.stroke();
       ctx.strokeStyle = pal.ring1;
-      desenharPoligono(c, c, R * (1.62 - nivel * 0.06), 6, -t * 0.25 * mult + Math.PI / 6);
+      desenharPoligono(c, c, R * (1.58 - nivel * 0.05), 6, -t * 0.28 * mult + Math.PI / 6);
       ctx.stroke();
-      // marcadores radiais tipo HUD Jarvis
-      for (let i = 0; i < 24; i++) {
-        const a = (i / 24) * Math.PI * 2 + t * 0.15;
+
+      // Barras radiais reativas à voz/som
+      const barras = 32;
+      for (let i = 0; i < barras; i++) {
+        const a = (i / barras) * Math.PI * 2 + t * 0.16;
+        const amp = (0.04 + nivel * 0.14 * (0.5 + 0.5 * Math.sin(i * 3 + t * 8))) * R;
         const rIn = R * 1.78;
-        const rOut = R * (i % 3 === 0 ? 1.9 : 1.83);
+        const rOut = rIn + amp + (i % 4 === 0 ? 5 : 2);
         ctx.beginPath();
         ctx.moveTo(c + Math.cos(a) * rIn, c + Math.sin(a) * rIn);
         ctx.lineTo(c + Math.cos(a) * rOut, c + Math.sin(a) * rOut);
-        ctx.strokeStyle = pal.ring3;
-        ctx.lineWidth = i % 3 === 0 ? 2 : 1;
+        ctx.strokeStyle = i % 2 === 0 ? pal.ring1 : pal.ring3;
+        ctx.lineWidth = i % 4 === 0 ? 2.2 : 1.2;
         ctx.stroke();
       }
       ctx.restore();
@@ -1071,10 +1264,10 @@
       const frac = Math.max(0, Math.min(1, timer.remaining / timer.totalSeconds));
       ctx.save();
       ctx.beginPath();
-      ctx.arc(c, c, R * 1.55, -Math.PI / 2, -Math.PI / 2 + Math.PI * 2 * frac);
+      ctx.arc(c, c, R * 1.54, -Math.PI / 2, -Math.PI / 2 + Math.PI * 2 * frac);
       ctx.lineWidth = 5;
       ctx.lineCap = "round";
-      ctx.strokeStyle = pal.core3;
+      ctx.strokeStyle = pal.ring1;
       ctx.stroke();
       ctx.restore();
     }
@@ -1093,18 +1286,18 @@
     ctx.closePath();
     ctx.fillStyle = pal.waveFill;
     ctx.fill();
-    ctx.lineWidth = 2.5;
+    ctx.lineWidth = 2.4;
     ctx.strokeStyle = pal.waveStroke;
     ctx.stroke();
 
-    // onda de choque ao acordar
+    // onda de choque ao acordar / palma
     if (flash > 0) {
       ctx.beginPath();
       ctx.arc(c, c, R * (1.2 + (1 - flash) * 1.5), 0, Math.PI * 2);
       ctx.lineWidth = 5 * flash;
       ctx.strokeStyle = `rgba(255,255,255,${flash})`;
       ctx.stroke();
-      flash = Math.max(0, flash - 0.02);
+      flash = Math.max(0, flash - 0.024);
     }
 
     // núcleo luminoso
@@ -1117,7 +1310,7 @@
     ctx.arc(c, c, R * pulso, 0, Math.PI * 2);
     ctx.fillStyle = nucleo;
     ctx.shadowColor = pal.shadow;
-    ctx.shadowBlur = 28 + nivel * 36;
+    ctx.shadowBlur = 30 + nivel * 38;
     ctx.fill();
     ctx.shadowBlur = 0;
 
@@ -1171,19 +1364,31 @@
     }
 
     const oi = prefs.userName
-      ? `Oi, ${prefs.userName}! Eu sou a ${prefs.assistantName}.`
-      : `Oi! Eu sou a ${prefs.assistantName}.`;
+      ? `Oii, ${prefs.userName}! Eu sou a ${prefs.assistantName}.`
+      : `Oii! Eu sou a ${prefs.assistantName}.`;
     const complemento = estado.online
-      ? " Como posso ajudar hoje?"
-      : " Já posso ver clima, horas, lembretes, timer de estudos, contas e curiosidades. Clique em Personalizar para deixar tudo do seu jeito!";
+      ? " Tô conectada e pronta pra pesquisar ou conversar sobre qualquer coisa!"
+      : " Já tenho acesso à web para pesquisas, clima, timer, lembretes, contas e muito mais. Bora começar?";
     adicionar("pink", oi + complemento);
-    el.legenda.textContent = oi + " Toque no microfone, escreva abaixo ou bata 2 palmas.";
+    el.legenda.textContent = oi + " Toque no microfone, escreva abaixo ou ative as 2 palmas.";
 
-    let prefPalmas = "off";
-    try {
-      prefPalmas = localStorage.getItem("pink-palmas") || "off";
-    } catch (_) {}
-    if (prefPalmas === "on") ligarPalmas();
+    // Ativa as 2 palmas automaticamente se veio com ?autopalmas=1, se já estava ligado, ou se o microfone já tem permissão concedida
+    const params = new URLSearchParams(window.location.search);
+    const autoParam = params.get("autopalmas") === "1";
+    let prefPalmas = null;
+    try { prefPalmas = localStorage.getItem("pink-palmas"); } catch (_) {}
+
+    let permConcedida = false;
+    if (navigator.permissions && navigator.permissions.query) {
+      try {
+        const st = await navigator.permissions.query({ name: "microphone" });
+        permConcedida = st.state === "granted";
+      } catch (_) {}
+    }
+
+    if (autoParam || prefPalmas === "on" || (prefPalmas !== "off" && permConcedida)) {
+      ligarPalmas(true);
+    }
   }
   iniciar();
 })();

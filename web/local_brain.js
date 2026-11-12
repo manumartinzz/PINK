@@ -68,7 +68,7 @@
   ];
 
   const PERSONALIDADES = {
-    carinhosa: "Que bom falar com você!",
+    carinhosa: "Que bom falar com você! Tô aqui pra tudo que precisar.",
     jarvis: "Sistemas operacionais prontos às suas ordens.",
     divertida: "Eba, cheguei! Bora fazer acontecer!",
     estudos: "Modo foco ativado. Vamos organizar suas metas?",
@@ -428,6 +428,7 @@
 
     if (/tema|paleta|cor|modo\s+escuro|visual/.test(tNorm)) {
       const temas = [
+        [/rosa\s*futuro|futurist|hologram/, "rosa-futuro", "Rosa Futuro HUD"],
         [/rose\s*gold|dourad|cobre/, "rose-gold", "Rose Gold"],
         [/lilas|roxo|lavanda|galax/, "lilas-galaxy", "Lilás Galáxia"],
         [/cereja|cyber|escuro|noturno|dark/, "cereja-cyber", "Cereja Cyber"],
@@ -607,15 +608,18 @@
       return { text: `Entre ${op1} e ${op2}, eu escolheria ${Math.random() < 0.5 ? op1 : op2}!`, actions: [], client_actions: [] };
     }
 
-    // 9) Pesquisa na web
-    const mBusca = tOrig.match(/^(?:pesquis[ae]r?|busc[ae]r?|procur[ae]r?)\s+(?:por\s+|no google\s+)?(.+)/i);
+    // 9) Pesquisa na web (consulta real + Google)
+    const mBusca = tOrig.match(/^(?:pesquis[ae]r?|busc[ae]r?|procur[ae]r?|descubr[ae]|investig[ae]r?)\s+(?:por\s+|sobre\s+|no google\s+)?(.+)/i);
     if (mBusca) {
-      const consulta = mBusca[1].trim();
+      const consulta = mBusca[1].trim().replace(/[?!.]+$/, "");
       const url = "https://www.google.com/search?q=" + encodeURIComponent(consulta);
       return {
-        text: `Preparei a pesquisa por “${consulta}” no Google.`,
-        actions: [`Pesquisa: ${consulta}`],
-        client_actions: [{ type: "open_url", url, label: `Ver busca: ${consulta}` }],
+        text: `Pesquisando na web sobre “${consulta}”...`,
+        actions: [`Pesquisa web: ${consulta}`],
+        client_actions: [
+          { type: "web_research", query: consulta },
+          { type: "open_url", url, label: "Ver no Google" },
+        ],
       };
     }
 
@@ -683,8 +687,23 @@
       return { text: `Até logo${chamado}! Conta comigo quando voltar.`, actions: [], client_actions: [] };
     }
 
+    // 12) Perguntas abertas e assuntos gerais -> pesquisa automática na web
+    const mPerg = tOrig.match(/^(?:quem\s+(?:foi|e|é|sao|são)|o\s+que\s+(?:e|é|sao|são|significa)|(?:me\s+)?(?:fala|conte|explica|diz)\s+(?:sobre|o\s+que\s+[eé]|quem\s+foi)?)\s+(.+)/i);
+    const termo = (mPerg ? mPerg[1] : tOrig).trim().replace(/[?!.]+$/, "");
+    if (termo.length >= 3) {
+      const url = "https://www.google.com/search?q=" + encodeURIComponent(termo);
+      return {
+        text: `Pesquisando na web sobre “${termo}”...`,
+        actions: [`Pesquisa web: ${termo}`],
+        client_actions: [
+          { type: "web_research", query: termo },
+          { type: "open_url", url, label: "Ver no Google" },
+        ],
+      };
+    }
+
     return {
-      text: `Ainda não sei responder isso livremente no modo Web${chamado}, mas já posso ver a hora, previsão do tempo, seus lembretes, iniciar um timer de estudos, fazer contas, contar curiosidades ou abrir sites. Quer tentar um desses?`,
+      text: `Pode falar mais um pouquinho${chamado}? Posso pesquisar qualquer assunto na web, ver o tempo, abrir sites, anotar lembretes ou iniciar um timer de estudos.`,
       actions: [],
       client_actions: [],
     };

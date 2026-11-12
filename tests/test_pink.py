@@ -130,6 +130,21 @@ class TestBrainLocal(unittest.TestCase):
         self.assertEqual(r2["client_actions"][0], {"type": "set_pref", "key": "theme", "value": "rose-gold"})
         r3 = self.brain.responder("Ativa o holograma cristal")
         self.assertEqual(r3["client_actions"][0], {"type": "set_pref", "key": "orbStyle", "value": "cristal"})
+        r4 = self.brain.responder("Muda para o tema futurista")
+        self.assertEqual(r4["client_actions"][0], {"type": "set_pref", "key": "theme", "value": "rosa-futuro"})
+
+    def test_pesquisa_web_e_protecao_url(self):
+        fake_busca = {"query": {"search": [{"title": "Ada Lovelace"}]}}
+        fake_resumo = {
+            "extract": "Ada Lovelace foi uma matemática e escritora inglesa. Ela escreveu o primeiro algoritmo.",
+            "content_urls": {"desktop": {"page": "https://pt.wikipedia.org/wiki/Ada_Lovelace"}},
+        }
+        with mock.patch("pink.skills._fetch_json", side_effect=[fake_busca, fake_resumo]):
+            r = self.brain.responder("Quem foi Ada Lovelace?")
+        self.assertIn("Ada Lovelace", r["text"])
+        self.assertTrue(any(a["type"] == "open_url" and "wikipedia" in a["url"] for a in r["client_actions"]))
+
+        self.assertIn("públicas", skills.fetch_webpage("http://127.0.0.1:8765/"))
 
     def test_timer_e_tarefas_e_calculo(self):
         rt = self.brain.responder("Inicia um pomodoro")
