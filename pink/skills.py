@@ -3,6 +3,8 @@ from __future__ import annotations
 
 import ast
 import datetime as dt
+import html
+import ipaddress
 import json
 import math
 import operator
@@ -11,6 +13,7 @@ import platform
 import random
 import re
 import shutil
+import socket
 import subprocess
 import threading
 import urllib.error
@@ -18,7 +21,7 @@ import urllib.request
 import webbrowser
 from pathlib import Path
 from typing import Any
-from urllib.parse import quote_plus, urlparse
+from urllib.parse import quote, quote_plus, urlparse
 
 import psutil
 
@@ -173,6 +176,122 @@ def search_web(query: str) -> str:
         except Exception:
             pass
     return f"Pesquisei por “{consulta}” no Google."
+
+
+def _limpar_texto_web(texto: str, max_frases: int = 3) -> str:
+    limpo = re.sub(r"\[\d+\]", "", texto)
+    limpo = re.sub(r"\s+", " ", limpo).strip()
+    frases = re.split(r"(?<=[.!?])\s+", limpo)
+    resumo = " ".join(frases[:max_frases]).strip()
+    if len(resumo) > 420:
+        resumo = resumo[:417].rsplit(" ", 1)[0] + "..."
+    return resumo
+
+
+def research_web(query: str) -> tuple[str, list[dict]]:
+    """Pesquisa informações reais na web (Wikipédia PT-BR e DuckDuckGo) e retorna resumo + links."""
+    consulta = query.strip()
+    if not consulta:
+        return "Me diga o que você quer que eu pesquise na web!", []
+
+    google_url = "https://www.google.com/search?q=" + quote_plus(consulta)
+    acoes: list[dict] = []
+    falha_rede = False
+
+    # 1) Wikipédia em português
+    try:
+        busca_url = (
+            "https://pt.wikipedia.org/w/api.php?"
+            f"action=query&list=search&srsearch={quote_plus(consulta)}&srlimit=1&utf8=1&format=json"
+        )
+        busca = _fetch_json(busca_url, timeout=3.0)
+        itens = (busca.get("query") or {}).get("search") or []
+        if itens:
+            titulo = itens[0].get("title", "")
+            if titulo:
+                resumo_url = (
+                    "https://pt.wikipedia.org/api/rest_v1/page/summary/"
+                    + quote(titulo.replace(" ", "_"), safe="")
+                )
+                pag = _fetch_json(resumo_url, timeout=3.0)
+                extrato = (pag.get("extract") or "").strip()
+                wiki_url = ((pag.get("content_urls") or {}).get("desktop") or {}).get("page") or (
+                    "https://pt.wikipedia.org/wiki/" + quote(titulo.replace(" ", "_"))
+                )
+                acoes.append({"type": "open_url", "url": wiki_url, "label": f"Wikipédia: {titulo}"})
+                acoes.append({"type": "open_url", "url": google_url, "label": "Ver no Google"})
+                if extrato:
+                    return _limpar_texto_web(extrato), acoes
+    except (urllib.error.URLError, TimeoutError, OSError, ValueError):
+        falha_rede = True
+
+    # 2) DuckDuckGo Instant Answer
+    try:
+        ddg_url = (
+            "https://api.duckduckgo.com/?"
+            f"q={quote_plus(consulta)}&format=json&no_html=1&skip_disambig=1&kl=br-pt"
+        )
+        ddg = _fetch_json(ddg_url, timeout=3.0)
+        resumo = (ddg.get("AbstractText") or ddg.get("Answer") or "").strip()
+        fonte_url = (ddg.get("AbstractURL") or "").strip()
+        if resumo:
+            if fonte_url:
+                acoes.append({"type": "open_url", "url": fonte_url, "label": "Fonte"})
+            acoes.append({"type": "open_url", "url": google_url, "label": "Ver no Google"})
+            return _limpar_texto_web(resumo), acoes
+    except (urllib.error.URLError, TimeoutError, OSError, ValueError):
+        falha_rede = True
+
+    if falha_rede:
+        return (
+            f"Pesquisando na web sobre “{consulta}”...",
+            [
+                {"type": "web_research", "query": consulta},
+                {"type": "open_url", "url": google_url, "label": "Ver no Google"},
+            ],
+        )
+
+    return (
+        f"Não encontrei um resumo direto para “{consulta}”, mas deixei o link da busca no Google aqui para você abrir!",
+        [{"type": "open_url", "url": google_url, "label": f"Pesquisar “{consulta}” no Google"}],
+    )
+
+
+def _host_publico(hostname: str) -> bool:
+    if not hostname or hostname.lower() in ("localhost", "127.0.0.1", "::1"):
+        return False
+    try:
+        infos = socket.getaddrinfo(hostname, None)
+        for info in infos:
+            ip = ipaddress.ip_address(info[4][0])
+            if ip.is_private or ip.is_loopback or ip.is_link_local or ip.is_reserved:
+                return False
+    except Exception:
+        return False
+    return True
+
+
+def fetch_webpage(url: str) -> str:
+    """Lê o texto principal de uma página web pública (para pesquisas avançadas)."""
+    alvo, _ = build_website_url(url)
+    if not alvo:
+        return "Endereço inválido."
+    analisado = urlparse(alvo)
+    if not _host_publico(analisado.hostname or ""):
+        return "Só posso acessar páginas públicas da internet."
+    try:
+        req = urllib.request.Request(alvo, headers={"User-Agent": "PinkAssistant/1.0"})
+        with urllib.request.urlopen(req, timeout=4.0) as resp:
+            ctype = resp.headers.get("Content-Type", "")
+            if "text/html" not in ctype and "text/plain" not in ctype:
+                return f"Conteúdo do tipo {ctype} não suportado para leitura."
+            bruto = resp.read(120_000).decode("utf-8", errors="ignore")
+        sem_script = re.sub(r"<(script|style|noscript)[^>]*>.*?</\1>", " ", bruto, flags=re.S | re.I)
+        texto = html.unescape(re.sub(r"<[^>]+>", " ", sem_script))
+        texto = re.sub(r"\s+", " ", texto).strip()
+        return texto[:1500] if texto else "Página sem texto legível."
+    except Exception:
+        return "Não consegui acessar essa página agora."
 
 
 def open_app(name: str) -> str:
@@ -684,11 +803,29 @@ TOOLS = [
     },
     {
         "name": "search_web",
-        "description": "Pesquisa um assunto no Google.",
+        "description": "Pesquisa um assunto no Google e abre a busca.",
         "input_schema": {
             "type": "object",
             "properties": {"query": {"type": "string"}},
             "required": ["query"],
+        },
+    },
+    {
+        "name": "research_web",
+        "description": "Pesquisa informações reais na web (Wikipédia e DuckDuckGo) para responder perguntas sobre qualquer assunto.",
+        "input_schema": {
+            "type": "object",
+            "properties": {"query": {"type": "string"}},
+            "required": ["query"],
+        },
+    },
+    {
+        "name": "fetch_webpage",
+        "description": "Lê o texto de uma página web pública a partir da URL.",
+        "input_schema": {
+            "type": "object",
+            "properties": {"url": {"type": "string"}},
+            "required": ["url"],
         },
     },
     {
@@ -809,17 +946,13 @@ def run_tool_rich(name: str, args: dict | None = None) -> tuple[str, list[dict]]
             return texto, acoes
         if name == "search_web":
             consulta = str(args.get("query", "")).strip()
-            texto = search_web(consulta)
-            acoes = (
-                [{
-                    "type": "open_url",
-                    "url": "https://www.google.com/search?q=" + quote_plus(consulta),
-                    "label": f"Ver busca: {consulta}",
-                }]
-                if consulta
-                else []
-            )
+            texto, acoes = research_web(consulta)
             return texto, acoes
+        if name == "research_web":
+            texto, acoes = research_web(str(args.get("query", "")))
+            return texto, acoes
+        if name == "fetch_webpage":
+            return fetch_webpage(str(args.get("url", ""))), []
         if name == "open_app":
             return open_app(str(args.get("name", ""))), []
         if name == "tell_joke":

@@ -1,17 +1,17 @@
 // Roda com: node tests/test_palmas.js
 const assert = require("assert");
-const { criarDetector } = require("../web/palmas.js");
+const { criarDetector, SENSIBILIDADES } = require("../web/palmas.js");
 
 // Simula o microfone: um pico a cada 10 ms. "palmas" = instantes (ms) com som forte.
-function simular(palmas, { duracao = 4000, ruido = 0.02, contínuo = false, ocupadoAte = 0 } = {}) {
-  const det = criarDetector();
+function simular(palmas, { duracao = 4000, ruido = 0.02, contínuo = false, ocupadoAte = 0, altura = 0.9, cfg } = {}) {
+  const det = criarDetector(cfg);
   let disparos = 0;
   for (let t = 0; t < duracao; t += 10) {
     let pico = ruido;
     if (contínuo) pico = 0.6;
     for (const p of palmas) {
       const d = t - p;
-      if (d >= 0 && d < 60) pico = Math.max(pico, 0.9 * (1 - d / 60) + 0.1); // estalo que decai
+      if (d >= 0 && d < 60) pico = Math.max(pico, altura * (1 - d / 60) + 0.05); // estalo que decai
     }
     if (det(pico, t, t < ocupadoAte)) disparos++;
   }
@@ -26,4 +26,12 @@ assert.strictEqual(simular([1000, 1400, 1800]), 1, "terceira palma logo depois �
 assert.strictEqual(simular([], { contínuo: true }), 0, "barulho contínuo não acorda");
 assert.strictEqual(simular([1000, 1400], { ocupadoAte: 2000 }), 0, "ignora palmas enquanto a Pink fala");
 assert.strictEqual(simular([1000, 1400, 5000, 5400], { duracao: 8000 }), 2, "acorda de novo depois da pausa");
+assert.strictEqual(simular([1000, 1450], { altura: 0.14 }), 1, "palma moderada de microfone de notebook também acorda");
+assert.strictEqual(simular([1000, 1450], { altura: 0.06, cfg: SENSIBILIDADES.alta }), 1, "sensibilidade alta detecta palmas baixas");
+
+let primeiraChamada = 0;
+const detHook = criarDetector(undefined, { onPrimeira: () => { primeiraChamada++; } });
+detHook(0.25, 1000, false);
+assert.strictEqual(primeiraChamada, 1, "hook de primeira palma dispara");
+
 console.log("palmas: todos os testes passaram");
