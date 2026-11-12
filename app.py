@@ -1,7 +1,8 @@
-"""Pink: assistente pessoal por voz com interface rosa.
+"""Pink: assistente pessoal por voz estilo Jarvis com interface personalizável.
 
 Execute com:  python app.py
 """
+import argparse
 import os
 import threading
 import webbrowser
@@ -17,6 +18,7 @@ from pink.brain import Brain  # noqa: E402
 
 RAIZ = Path(__file__).parent
 app = Flask(__name__, static_folder=str(RAIZ / "web"), static_url_path="")
+app.config["SEND_FILE_MAX_AGE_DEFAULT"] = 0
 cerebro = Brain()
 skills.system_info()  # aquece o medidor de CPU
 
@@ -30,6 +32,9 @@ def inicio():
 def config():
     return jsonify({
         "nome": os.getenv("PINK_USER_NAME", "").strip(),
+        "assistente": os.getenv("PINK_ASSISTANT_NAME", "Pink").strip() or "Pink",
+        "personalidade": os.getenv("PINK_PERSONALITY", "carinhosa").strip() or "carinhosa",
+        "cidade": os.getenv("PINK_CITY", "Curitiba").strip() or "Curitiba",
         "online": cerebro.conectada,
     })
 
@@ -43,7 +48,8 @@ def status():
 def chat():
     dados = request.get_json(silent=True) or {}
     mensagem = str(dados.get("message", ""))[:2000]
-    return jsonify(cerebro.responder(mensagem))
+    cfg = dados.get("config") if isinstance(dados.get("config"), dict) else None
+    return jsonify(cerebro.responder(mensagem, config=cfg))
 
 
 @app.post("/api/reset")
@@ -52,11 +58,54 @@ def reset():
     return jsonify({"ok": True})
 
 
+@app.get("/api/tasks")
+def listar_tarefas():
+    return jsonify({"tasks": skills.get_tasks_list()})
+
+
+@app.post("/api/tasks")
+def adicionar_tarefa():
+    dados = request.get_json(silent=True) or {}
+    texto = str(dados.get("text", "")).strip()[:200]
+    if not texto:
+        return jsonify({"error": "Texto vazio", "tasks": skills.get_tasks_list()}), 400
+    msg, _ = skills.add_task(texto)
+    return jsonify({"message": msg, "tasks": skills.get_tasks_list()})
+
+
+@app.patch("/api/tasks/<int:task_id>")
+def alternar_tarefa(task_id: int):
+    tarefas = skills.toggle_task(task_id)
+    return jsonify({"tasks": tarefas})
+
+
+@app.delete("/api/tasks/<int:task_id>")
+def remover_tarefa(task_id: int):
+    tarefas = skills.delete_task_by_id(task_id)
+    return jsonify({"tasks": tarefas})
+
+
+@app.delete("/api/tasks")
+def limpar_tarefas():
+    apenas_feitas = request.args.get("scope") == "done"
+    msg, _ = skills.clear_tasks(only_done=apenas_feitas)
+    return jsonify({"message": msg, "tasks": skills.get_tasks_list()})
+
+
 if __name__ == "__main__":
-    porta = int(os.getenv("PINK_PORT", "8765"))
-    url = f"http://127.0.0.1:{porta}"
+    parser = argparse.ArgumentParser(description="Inicia o servidor da assistente Pink.")
+    parser.add_argument("--host", default=os.getenv("PINK_HOST", "127.0.0.1"))
+    parser.add_argument("--port", type=int, default=int(os.getenv("PINK_PORT", "8765")))
+    parser.add_argument(
+        "--no-browser",
+        action="store_true",
+        default=os.getenv("PINK_NO_BROWSER", "").strip().lower() in ("1", "true", "yes"),
+    )
+    args = parser.parse_args()
+
+    url = f"http://{args.host}:{args.port}"
     print(f"\n  Pink no ar em {url}")
     print("  Use o Chrome ou o Edge para ter reconhecimento de voz.\n")
-    threading.Timer(1.0, lambda: webbrowser.open(url)).start()
-    # 127.0.0.1: só o seu computador consegue acessar a Pink.
-    app.run(host="127.0.0.1", port=porta, debug=False)
+    if not args.no_browser and args.host in ("127.0.0.1", "localhost"):
+        threading.Timer(1.0, lambda: webbrowser.open(f"http://127.0.0.1:{args.port}")).start()
+    app.run(host=args.host, port=args.port, debug=False)
